@@ -1,7 +1,6 @@
 import mazegenerator
 import pygame
 from itertools import cycle
-import time
 
 
 class render():
@@ -89,7 +88,6 @@ class render():
         return fenetre
 
     def cremaze(self):
-        print(self.size_cel)
         self.wall_epaisseur = 5
         self.color_fond = self.extract_color(self.config["COLOR_FOND"])
         self.color_wall = self.extract_color(self.config["COLOR_WALL"])
@@ -137,13 +135,37 @@ class Player():
         self.cycle = cycle(self.list_position)
         self.decelage = ((self.cel_size - self.cel_size / 2) / 2)
 
+    def check_wall(self, maze):
+        list = re.check_bits(maze[round(self.row)][round(self.col)])
+        if list["nord"] and self.direction == "nord":
+            return False
+        if list["sud"] and self.direction == "sud":
+            return False
+        if list["ouest"] and self.direction == "ouest":
+            return False
+        if list["est"] and self.direction == "est":
+            return False
+        return True
+
+    def rotate(self):
+        if self.direction == "nord":
+            image = pygame.transform.rotate(next(self.cycle), 270)
+        elif self.direction == "sud":
+            image = pygame.transform.rotate(next(self.cycle), 90)
+        elif self.direction == "ouest":
+            image = pygame.transform.rotate(next(self.cycle), 180)
+        elif self.direction == "est":
+            image = pygame.transform.rotate(next(self.cycle), 0)
+        else:
+            image = next(self.cycle)
+        return image
+
     def draw_player(self, fenetre):
         y = self.row * self.cel_size
         x = self.col * self.cel_size
         y += self.decelage
         x += self.decelage
-        image = next(self.cycle)
-        print(image)
+        image = self.rotate()
         fenetre.blit(image, (x, y))
 
     def deplacement(self):
@@ -165,7 +187,6 @@ class Player():
             self.direction = "ouest"
         elif direction == pygame.K_RIGHT:
             self.direction = "est"
-        # self.deplacement()
 
 
 if __name__ == "__main__":
@@ -189,7 +210,8 @@ if __name__ == "__main__":
                         event.key == pygame.K_RIGHT:
                     
                     play.direction_deplacement(event.key)
-        play.deplacement()
+        if play.check_wall(re.mazze):
+            play.deplacement()
         re.cremaze()
         play.draw_player(re.fenetre)
         pygame.display.flip()
