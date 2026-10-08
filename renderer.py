@@ -111,6 +111,8 @@ class Player():
     def __init__(self, size_cel, row, col, direction_de_depart):
         self.row = row
         self.col = col
+        self.base_row = row
+        self.base_col = col
         self.cel_size = size_cel
         self.direction = direction_de_depart
         self.next_direction = direction_de_depart
@@ -148,6 +150,7 @@ class Player():
         self.ubuntu_logo = pygame.transform.scale(ubuntu_logo, 
                                                   (self.size_pacgums, 
                                                    self.size_pacgums))
+        self.restard = False
 
     def at_center(self):
         return (abs(self.row - round(self.row)) < 0.001 and
@@ -270,11 +273,14 @@ class Phantom():
     def __init__(self, row, col, cel_size, image):
         self.row = row
         self.col = col
+        self.base_row = row
+        self.base_col = col
         self.cel_size = cel_size
         self.phantom = pygame.transform.scale(image, (self.cel_size // 2, 
                                                       self.cel_size // 2))
         self.decalage = (self.cel_size - self.cel_size / 2) / 2 
         self.direction = "est"
+        self.restart = False
 
     def draw_phantom(self, fenetre):
         y = self.row * self.cel_size
@@ -283,27 +289,47 @@ class Phantom():
         x += self.decalage
         fenetre.blit(self.phantom, (x, y))
 
-    def deplace_vers_joueur(self, mazze, row, col, check_bits):
-        chemin = self.bfs(mazze, row, col, check_bits)
-        if len(chemin) >= 2:
-            prochain_row, prochain_col = chemin[1]
-            if prochain_row > self.row:
-                self.deplacement("sud")
-            elif prochain_row < self.row:
-                self.deplacement("nord")
-            elif prochain_col > self.col:
-                self.deplacement("ouest")
-            elif prochain_col < self.col:
-                self.deplacement("est")
+    def update(self, mazze, row, col, check_bits, Player):
+        if self.at_center():
+            self.row = round(self.row)
+            self.col = round(self.col)
+            chemin = self.bfs(mazze, row, col, check_bits)
+            if len(chemin) == 1:
+                Player.restard = True
+                return
+            self.deplace_vers_joueur(chemin)
+        self.deplacement()
+    
+    def at_center(self):
+        return (abs(self.row - round(self.row)) < 0.001 and
+                abs(self.col - round(self.col)) < 0.001)
+    
+    def deplace_vers_joueur(self, chemin):
+        prochain_row, prochain_col = chemin[1]
+        if prochain_row > self.row:
+            self.direction = "sud"
+        elif prochain_row < self.row:
+            self.direction = "nord"
+        elif prochain_col > self.col:
+            self.direction = "ouest"
+        elif prochain_col < self.col:
+            self.direction = "est"
+        if (self.row > prochain_row):
+            if self.row - prochain_row <= 0.4:
+                self.direction = None
+        if (self.row < prochain_row):
+            if prochain_row - self.row <= 0.4:
+                self.direction = None
+            self.deplacement()
 
-    def deplacement(self, direction):
-        if direction == "sud":
+    def deplacement(self):
+        if self.direction == "sud":
             self.row += 0.05
-        elif direction == "nord":
+        elif self.direction == "nord":
             self.row -= 0.05
-        elif direction == "est":
+        elif self.direction == "est":
             self.col -= 0.05
-        elif direction == "ouest":
+        elif self.direction == "ouest":
             self.col += 0.05
         return
 
@@ -393,8 +419,14 @@ if __name__ == "__main__":
 
         for phanto in list_fantomes:
             phanto.draw_phantom(re.fenetre)
-            phanto.deplace_vers_joueur(re.mazze, round(play.row), round(play.col), re.check_bits)
-
+            phanto.update(re.mazze, round(play.row), round(play.col), re.check_bits, play)
+            if play.restard:
+                for phanto in list_fantomes:
+                    phanto.row = phanto.base_row
+                    phanto.col = phanto.base_col
+                play.row = play.base_row
+                play.col = play.base_col
+                play.restard = False
         play.sup_pacgums()
         play.draw_player(re.fenetre)
         pygame.display.flip()
